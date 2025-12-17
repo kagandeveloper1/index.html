@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agent Studio</title>
+  <meta name="description" content="Sesli & yazılı AI agent demo sayfası" />
+  <style>
+    :root{
+      --bg:#070913;
+      --panel: rgba(255,255,255,.06);
+      --stroke: rgba(255,255,255,.12);
+      --text:#eef2ff;
+      --muted: rgba(238,242,255,.72);
+      --shadow: rgba(0,0,0,.25);
+      --a:#8b5cf6;
+      --b:#22c55e;
+      --c:#38bdf8;
+      --warn:#f59e0b;
+      --radius:22px;
+    }
+    [data-theme="light"]{
+      --bg:#f7f8ff;
+      --panel: rgba(0,0,0,.05);
+      --stroke: rgba(0,0,0,.10);
+      --text:#0b1020;
+      --muted: rgba(11,16,32,.70);
+      --shadow: rgba(0,0,0,.12);
+      --a:#7c3aed;
+      --b:#16a34a;
+      --c:#0284c7;
+    }
+    *{ box-sizing:border-box }
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      color:var(--text);
+      background: var(--bg);
+      overflow-x:hidden;
+    }
+
+    /* Animated gradient blobs */
+    .bg{
+      position:fixed; inset:0; z-index:-2;
+      background:
+        radial-gradient(900px 600px at 15% 10%, color-mix(in oklab, var(--a) 42%, transparent), transparent 60%),
+        radial-gradient(800px 600px at 85% 15%, color-mix(in oklab, var(--b) 35%, transparent), transparent 62%),
+        radial-gradient(900px 600px at 45% 95%, color-mix(in oklab, var(--c) 25%, transparent), transparent 62%);
+      filter: blur(0px);
+    }
+    .noise{
+      position:fixed; inset:0; z-index:-1;
+      background-image:
+        linear-gradient(rgba(255,255,255,.04), rgba(255,255,255,.04)),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.18'/%3E%3C/svg%3E");
+      mix-blend-mode: overlay;
+      opacity:.55;
+      pointer-events:none;
+    }
+
+    .wrap{
+      width:min(1180px, 100%);
+      margin:0 auto;
+      padding: 22px 18px 40px;
+    }
+
+    /* Top bar */
+    .top{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding: 10px 8px 20px;
+    }
+    .brand{
+      display:flex; align-items:center; gap:10px;
+      font-weight:800; letter-spacing:.2px;
+    }
+    .logo{
+      width:34px; height:34px; border-radius:14px;
+      background:
+        radial-gradient(12px 12px at 30% 30%, rgba(255,255,255,.7), transparent 60%),
+        linear-gradient(135deg, var(--a), var(--c));
+      box-shadow: 0 14px 40px color-mix(in oklab, var(--a) 30%, transparent);
+      border: 1px solid rgba(255,255,255,.22);
+    }
+    .nav{
+      display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+    }
+    .chip, .btn{
+      border: 1px solid var(--stroke);
+      background: color-mix(in oklab, var(--panel) 100%, transparent);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 9px 12px;
+      font-size: 13px;
+      cursor: pointer;
+      user-select:none;
+      box-shadow: 0 10px 35px var(--shadow);
+    }
+    .btn.primary{
+      border:none;
+      background: linear-gradient(135deg, var(--a), var(--c));
+      box-shadow: 0 16px 40px color-mix(in oklab, var(--a) 20%, transparent);
+      font-weight: 700;
+    }
+
+    /* Layout */
+    .grid{
+      display:grid;
+      grid-template-columns: 1.05fr .95fr;
+      gap: 16px;
+      align-items: start;
+    }
+    @media (max-width: 980px){
+      .grid{ grid-template-columns: 1fr; }
+    }
+
+    .card{
+      background: var(--panel);
+      border: 1px solid var(--stroke);
+      border-radius: var(--radius);
+      box-shadow: 0 18px 60px var(--shadow);
+      overflow:hidden;
+    }
+    .pad{ padding: 22px; }
+
+    /* Left hero */
+    h1{
+      margin:0 0 14px;
+      font-size: 44px;
+      line-height: 1.02;
+      letter-spacing: -0.6px;
+    }
+    @media (max-width: 520px){ h1{ font-size: 36px; } }
+    .lead{
+      margin:0 0 14px;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 15px;
+    }
+    .bar{
+      display:flex; gap:10px; flex-wrap:wrap; margin: 14px 0 0;
+    }
+    .kpiRow{
+      margin-top: 18px;
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    @media (max-width: 720px){ .kpiRow{ grid-template-columns: 1fr; } }
+    .kpi{
+      border:1px solid var(--stroke);
+      border-radius: 18px;
+      padding: 14px;
+      background: rgba(0,0,0,.10);
+    }
+    [data-theme="light"] .kpi{ background: rgba(255,255,255,.55); }
+    .kpi b{ display:block; font-size: 13px; margin-bottom: 4px; }
+    .kpi span{ color: var(--muted); font-size: 12.5px; line-height: 1.35; }
+
+    /* Timeline */
+    .timeline{
+      margin-top: 18px;
+      border-top: 1px solid rgba(255,255,255,.10);
+      padding-top: 16px;
+      display:grid;
+      gap: 10px;
+    }
+    .step{
+      display:flex; gap:12px; align-items:flex-start;
+      padding: 12px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.12);
+    }
+    [data-theme="light"] .step{ background: rgba(255,255,255,.6); }
+    .dot{
+      flex:0 0 auto;
+      width: 12px; height: 12px; border-radius: 999px;
+      margin-top: 4px;
+      background: linear-gradient(135deg, var(--b), var(--c));
+      box-shadow: 0 0 14px color-mix(in oklab, var(--b) 40%, transparent);
+    }
+    .step b{ display:block; font-size: 13px; margin-bottom: 2px; }
+    .step p{ margin:0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+
+    /* Right demo */
+    .demoHead{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:10px;
+      padding: 16px 18px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.03);
+    }
+    .badge{
+      display:flex; align-items:center; gap:8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .live{
+      width:8px; height:8px; border-radius:999px;
+      background: var(--b);
+      box-shadow: 0 0 14px color-mix(in oklab, var(--b) 45%, transparent);
+    }
+    .demoBody{ padding: 14px; }
+    elevenlabs-convai{ display:block; min-height: calc(100vh - 160px); }
+
+    /* FAQ */
+    .faq{
+      margin-top: 16px;
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+    .qa{
+      border:1px solid var(--stroke);
+      background: rgba(0,0,0,.10);
+      border-radius: 18px;
+      overflow:hidden;
+    }
+    [data-theme="light"] .qa{ background: rgba(255,255,255,.6); }
+    .q{
+      width:100%;
+      text-align:left;
+      padding: 14px 14px;
+      background: transparent;
+      border: none;
+      cursor:pointer;
+      color: var(--text);
+      display:flex; align-items:center; justify-content:space-between;
+      gap: 12px;
+      font-weight: 750;
+      font-size: 14px;
+    }
+    .a{
+      max-height: 0px;
+      overflow:hidden;
+      transition: max-height .25s ease;
+      padding: 0 14px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .qa.open .a{
+      max-height: 220px;
+      padding-bottom: 14px;
+    }
+    .chev{
+      width: 10px; height:10px;
+      border-right: 2px solid color-mix(in oklab, var(--text) 70%, transparent);
+      border-bottom: 2px solid color-mix(in oklab, var(--text) 70%, transparent);
+      transform: rotate(45deg);
+      transition: transform .2s ease;
+      flex: 0 0 auto;
+      opacity:.8;
+    }
+    .qa.open .chev{ transform: rotate(-135deg); }
+
+    footer{
+      margin-top: 18px;
+      color: color-mix(in oklab, var(--muted) 90%, transparent);
+      font-size: 12px;
+      padding: 0 8px;
+      line-height: 1.5;
+    }
+    code{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      padding: 2px 6px;
+      border-radius: 8px;
+      border:1px solid var(--stroke);
+      background: rgba(0,0,0,.15);
+      color: color-mix(in oklab, var(--text) 92%, transparent);
+    }
+  </style>
+</head>
+
+<body data-theme="light">
+  <div class="bg"></div>
+  <div class="noise"></div>
+
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">
+        <div class="logo"></div>
+        <div>
+          Agent Studio
+          <div style="font-size:12px; color:var(--muted); font-weight:650;">Voice-first demo page</div>
+        </div>
+      </div>
+
+      <div class="nav">
+        <div class="chip" id="scrollDemo">🎙️ Demo</div>
+        <div class="chip" id="scrollFaq">❓ FAQ</div>
+        <button class="btn" id="toggleTheme">🌓 Tema</button>
+        <button class="btn primary" id="copyEmbed">Kodu Kopyala</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- LEFT -->
+      <section class="card pad">
+        <h1>Konuş, dinlesin.<br/>Yanıtlasın.</h1>
+        <p class="lead">
+          Bu sayfa “sadece widget koyduk” gibi değil; demo + açıklama + mini ürün dili var.
+          İstersen burayı tamamen “marka sayfası”na çeviririz.
+        </p>
+
+        <div class="bar">
+          <span class="chip">⚡ Hızlı kurulum</span>
+          <span class="chip">🔒 HTTPS/localhost uyumlu</span>
+          <span class="chip">🎧 Ses + metin</span>
+        </div>
+
+        <div class="kpiRow">
+          <div class="kpi">
+            <b>Odak: Demo</b>
+            <span>Agent direkt sağda. Kullanıcı “nereden konuşacağım” diye aramaz.</span>
+          </div>
+          <div class="kpi">
+            <b>Özgün Tasarım</b>
+            <span>Neon glass + noise + soft shadow. Basit ama premium his.</span>
+          </div>
+          <div class="kpi">
+            <b>Tek Dosya</b>
+            <span><code>indexxx.html</code> ile bitti. Deploy etmek çok kolay.</span>
+          </div>
+        </div>
+
+        <div class="timeline">
+          <div class="step">
+            <div class="dot"></div>
+            <div>
+              <b>1) Açılış</b>
+              <p>Siteyi <code>https</code> veya <code>localhost</code> üzerinden aç (mikrofon için şart).</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="dot"></div>
+            <div>
+              <b>2) İzin</b>
+              <p>Tarayıcı mikrofon iznini “Allow” yap. Gerekirse adres çubuğu kilidinden.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="dot"></div>
+            <div>
+              <b>3) Kullan</b>
+              <p>Konuş / yaz. İstersen “örnek komutlar” bölümü de eklerim.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="faq" id="faq">
+          <div class="qa">
+            <button class="q">
+              Mikrofon çalışmıyorsa ne yapayım?
+              <span class="chev"></span>
+            </button>
+            <div class="a">
+              <p>En sık sebep: sayfayı <b>file://</b> ile açmak. VS Code Live Server veya <code>http://localhost</code> kullan. Sonra site ayarlarından mikrofon iznini aç.</p>
+            </div>
+          </div>
+
+          <div class="qa">
+            <button class="q">
+              Bunu gerçek ürün sayfasına çevirebilir miyiz?
+              <span class="chev"></span>
+            </button>
+            <div class="a">
+              <p>Evet. Üstüne: fiyat kutuları, kullanım senaryoları, “müşteri yorumları”, CTA butonları, analytics ve iletişim formu eklenir.</p>
+            </div>
+          </div>
+
+          <div class="qa">
+            <button class="q">
+              Widget’ı tam ekran/kenar köşe yapabilir miyiz?
+              <span class="chev"></span>
+            </button>
+            <div class="a">
+              <p>Yapılır. Düzeni tamamen widget’a göre düzenleriz; sol paneli küçültür, sağ paneli full-height yaparız.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT -->
+      <aside class="card" id="demo" style="position:sticky; top:18px;">
+        <div class="demoHead">
+          <div style="font-weight:850;">Canlı Agent</div>
+          <div class="badge"><span class="live"></span> online</div>
+        </div>
+        <div class="demoBody">
+          <elevenlabs-convai agent-id="agent_8001kcnqkr3mehn97xw35ppd1by3"></elevenlabs-convai>
+        </div>
+      </aside>
+    </div>
+
+    <footer>
+      Embed kodu: <code>&lt;elevenlabs-convai agent-id="..."&gt;</code> + script.  
+      Deploy için: Netlify/Vercel/GitHub Pages hepsi olur (HTTPS olduğu için ses daha stabil).
+    </footer>
+  </div>
+
+  <!-- ElevenLabs widget -->
+  <script src="https://unpkg.com/@elevenlabs/convai-widget-embed" async type="text/javascript"></script>
+
+  <script>
+    // Smooth scroll
+    const $ = (s) => document.querySelector(s);
+    $("#scrollDemo").addEventListener("click", ()=> $("#demo").scrollIntoView({behavior:"smooth", block:"start"}));
+    $("#scrollFaq").addEventListener("click", ()=> $("#faq").scrollIntoView({behavior:"smooth", block:"start"}));
+
+    // Theme toggle
+    const body = document.body;
+    $("#toggleTheme").addEventListener("click", ()=>{
+      body.dataset
